@@ -1,24 +1,32 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:colors_app/components/chat_bubble.dart';
 import 'package:colors_app/components/textfield.dart';
+import 'package:colors_app/helper/helper_functions.dart';
 import 'package:colors_app/services/chat/chat_service.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-class MessagePage extends StatelessWidget {
+class MessagePage extends StatefulWidget {
   MessagePage(
       {super.key, required this.receiverEmail, required this.receiverID});
-  String receiverEmail;
-  String receiverID;
+  final String receiverEmail;
+  final String receiverID;
 
+  @override
+  State<MessagePage> createState() => _MessagePageState();
+}
+
+class _MessagePageState extends State<MessagePage> {
   final TextEditingController _messageController = TextEditingController();
 
   final ChatService _chatService = ChatService();
+  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
 
   void sendMessage() async {
     if (_messageController.text.isNotEmpty) {
-      await _chatService.sendMessage(receiverID, _messageController.text);
+      await _chatService.sendMessage(
+          widget.receiverID, _messageController.text);
       _messageController.clear();
     }
   }
@@ -27,7 +35,7 @@ class MessagePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          title: Text(receiverEmail),
+          title: Text(widget.receiverEmail),
         ),
         body: Column(
           children: [
@@ -40,7 +48,7 @@ class MessagePage extends StatelessWidget {
   Widget _buildMessageList() {
     String senderID = FirebaseAuth.instance.currentUser!.uid;
     return StreamBuilder(
-      stream: _chatService.getMessages(receiverID, senderID),
+      stream: _chatService.getMessages(widget.receiverID, senderID),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Center(
@@ -60,14 +68,25 @@ class MessagePage extends StatelessWidget {
 
   Widget _buildMessageItem(DocumentSnapshot doc) {
     Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-    bool isCurrentUser =
-        data['senderID'] == FirebaseAuth.instance.currentUser!.uid;
+    bool isCurrentUser = data['senderID'] == _firebaseAuth.currentUser!.uid;
+    final String message = data['message'];
     var alignment =
         isCurrentUser ? Alignment.centerRight : Alignment.centerLeft;
     return Container(
         alignment: alignment,
-        child:
-            ChatBubble(message: data['message'], isCurrentUser: isCurrentUser));
+        child: message.startsWith('Color(0xff')
+            ? Padding(
+                padding:
+                    const EdgeInsets.symmetric(vertical: 2.5, horizontal: 25),
+                child: Container(
+                  height: 200,
+                  width: 150,
+                  decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      color: getColorFromString(message)),
+                ),
+              )
+            : ChatBubble(message: message, isCurrentUser: isCurrentUser));
   }
 
   Widget _buildUserInput() {

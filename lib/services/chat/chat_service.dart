@@ -4,21 +4,12 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 
 class ChatService {
-  Stream<List<Map<String, dynamic>>> getUsersStream() {
-    return FirebaseFirestore.instance
-        .collection('Users')
-        .snapshots()
-        .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final user = doc.data();
-        return user;
-      }).toList();
-    });
-  }
+  final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Future<void> sendMessage(String receiverID, String message) async {
-    final String currentUserID = FirebaseAuth.instance.currentUser!.uid;
-    final String currentUserEmail = FirebaseAuth.instance.currentUser!.email!;
+    final String currentUserID = _firebaseAuth.currentUser!.uid;
+    final String currentUserEmail = _firebaseAuth.currentUser!.email.toString();
     final Timestamp timestamp = Timestamp.now();
 
     Message newMessage = Message(
@@ -27,26 +18,36 @@ class ChatService {
         receiverID: receiverID,
         message: message,
         timestamp: timestamp);
+
     List<String> ids = [currentUserID, receiverID];
     ids.sort();
-    String chatRoomID = ids.join('_');
+    String chatRoomID = ids.join("_");
 
-    await FirebaseFirestore.instance
-        .collection('chatRooms')
+    await _firestore
+        .collection('ChatRooms')
         .doc(chatRoomID)
-        .collection("messages")
+        .collection('messages')
         .add(newMessage.toMap());
   }
 
   Stream<QuerySnapshot> getMessages(String userID, String otherUserID) {
     List<String> ids = [userID, otherUserID];
     ids.sort();
-    String chatRoomID = ids.join('_');
-    return FirebaseFirestore.instance
-        .collection('chatRooms')
+    String chatRoomID = ids.join("_");
+    return _firestore
+        .collection('ChatRooms')
         .doc(chatRoomID)
-        .collection("messages")
-        .orderBy("timestamp", descending: false)
+        .collection('messages')
+        .orderBy('timestamp', descending: false)
         .snapshots();
+  }
+
+  Stream<List<Map<String, dynamic>>> getUsersStream() {
+    return _firestore.collection("Users").snapshots().map((snaphot) {
+      return snaphot.docs.map((doc) {
+        final user = doc.data();
+        return user;
+      }).toList();
+    });
   }
 }

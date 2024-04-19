@@ -56,6 +56,7 @@ class _RegisterPageState extends State<RegisterPage> {
           .set({
         'email': userCredential.user!.email,
         'username': _usernameController.text.trim(),
+        'uid': userCredential.user!.uid,
         'colors': [],
         'favorites': [],
       });
